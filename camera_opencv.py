@@ -15,8 +15,8 @@ class Camera(BaseCamera):
     def set_video_source(source):
         Camera.video_source = source
 
-    @staticmethod
-    def frames():
+    # @staticmethod
+    def frames(self):
         camera = cv2.VideoCapture(Camera.video_source)
         if not camera.isOpened():
             raise RuntimeError('Could not start camera.')

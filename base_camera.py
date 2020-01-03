@@ -85,7 +85,7 @@ class BaseCamera(object):
         """"Generator that returns frames from the camera."""
         raise RuntimeError('Must be implemented by subclasses.')
 
-    @classmethod
+    # @classmethod
     def _thread(cls):
         """Camera background thread."""
         print('Starting camera thread.')
@@ -102,3 +102,5 @@ class BaseCamera(object):
                 print('Stopping camera thread due to inactivity.')
                 break
         BaseCamera.thread = None
+
+
