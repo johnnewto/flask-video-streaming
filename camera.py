@@ -7,8 +7,8 @@ class Camera(BaseCamera):
     files 1.jpg, 2.jpg and 3.jpg at a rate of one frame per second."""
     imgs = [open(f + '.jpg', 'rb').read() for f in ['1', '2', '3']]
 
-    @staticmethod
-    def frames():
+    # @staticmethod
+    def frames(self):
         while True:
             time.sleep(1)
             yield Camera.imgs[int(time.time()) % 3]

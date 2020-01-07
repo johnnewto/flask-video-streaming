@@ -8,6 +8,9 @@ except ImportError:
     except ImportError:
         from _thread import get_ident
 
+import logging
+logger = logging.getLogger('app')
+# logger = logging.getLogger(__name__)
 
 class CameraEvent(object):
     """An Event-like class that signals all active clients when a new frame is
@@ -61,6 +64,7 @@ class BaseCamera(object):
         """Start the background camera thread if it isn't running yet."""
         if BaseCamera.thread is None:
             BaseCamera.last_access = time.time()
+            logger.info(f'BaseCamera: start background frame thread.')
 
             # start background frame thread
             BaseCamera.thread = threading.Thread(target=self._thread)
@@ -80,16 +84,16 @@ class BaseCamera(object):
 
         return BaseCamera.frame
 
-    @staticmethod
-    def frames():
+    # @staticmethod
+    def frames(self):
         """"Generator that returns frames from the camera."""
         raise RuntimeError('Must be implemented by subclasses.')
 
     # @classmethod
-    def _thread(cls):
+    def _thread(self):
         """Camera background thread."""
-        print('Starting camera thread.')
-        frames_iterator = cls.frames()
+        logger.info('Starting camera thread.')
+        frames_iterator = self.frames()
         for frame in frames_iterator:
             BaseCamera.frame = frame
             BaseCamera.event.set()  # send signal to clients
@@ -97,9 +101,9 @@ class BaseCamera(object):
 
             # if there hasn't been any clients asking for frames in
             # the last 10 seconds then stop the thread
-            if time.time() - BaseCamera.last_access > 10:
+            if time.time() - BaseCamera.last_access > 2:
                 frames_iterator.close()
-                print('Stopping camera thread due to inactivity.')
+                logger.info('Stopping camera thread due to inactivity.')
                 break
         BaseCamera.thread = None
 
