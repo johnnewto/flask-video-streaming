@@ -1,16 +1,54 @@
 #!/usr/bin/env python
-
+import logging
+import logging.config
+from logging.handlers import RotatingFileHandler
+import os
+import atexit
 from time import sleep
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request
+# import json
+#
+# print('Setting up logging')
+# if not os.path.exists('logs'):
+#     os.mkdir('logs')
+#
+# with open('logging.json') as f:
+#     config = json.load(f)
+# logging.config.dictConfig(config)
+# # logging.config.dictConfig(config)
+# # from logging.config import fileConfig
+# # # create logger
+# # logger = logging.getLogger('applog')
+# logger = logging.getLogger(__name__)
+
+import os
+import json
+import logging.config
+from pathlib import Path
+def setup_logging(default_path='logging.json',
+                  default_level=logging.INFO):
+    """Setup logging configuration"""
+    path = Path(default_path)
+    Path('logs').mkdir(parents=True, exist_ok=True)
+
+    if os.path.exists(path):
+        with open(path, 'rt') as f:
+            config = json.load(f)
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=default_level)
+setup_logging()
+
+logger = logging.getLogger(__name__)
+
 # from camera_opencv import Camera
-from camera_FLIR import Camera_FLIR
+from camera_FLIR import CameraFLIR
 from FLIRCam.USB_camera import Camera as FLIRCamera
 cam_1 = FLIRCamera(model='ptgrey', identity='19312753', name='FrontLeft')
 cam_2 = FLIRCamera(model='ptgrey', identity='19312752', name='FrontRight')
 
-app = Flask(__name__)
-from flask import request
 
+app = Flask(__name__)
 
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
@@ -29,11 +67,11 @@ from imutils.video import FPS
 
 def gen1():
     """Video streaming generator function."""
-    cam1 = Camera_FLIR(cam_1)
+    cam1 = CameraFLIR(cam_1)
     fps = FPS().start()
-    app.logger.info('Starting Gen 1')
+    # app.logger.info('Starting Gen 1')
     while True:
-        frame = cam1.get_frame()
+        frame = cam1.get_frame(cam_1.identity)
         fps.update()
         fps.stop()
         # print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
@@ -42,11 +80,11 @@ def gen1():
 
 def gen2():
     """Video streaming generator function."""
-    cam2 = Camera_FLIR(cam_2)
-    app.logger.info('Starting Gen 2')
+    cam2 = CameraFLIR(cam_2)
+    # app.logger.info('Starting Gen 2')
     fps = FPS().start()
     while True:
-        frame = cam2.get_frame()
+        frame = cam2.get_frame(cam_2.identity)
         fps.update()
         fps.stop()
         # print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
@@ -93,28 +131,13 @@ def shutdown() -> str:
 
 
 if __name__ == '__main__':
-    import logging
-    from logging.handlers import RotatingFileHandler
-    import os
-    import atexit
 
-    if not app.debug:
 
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240,
-                                           backupCount=10)
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-
-        app.logger.setLevel(logging.INFO)
-        app.logger.info('app startup')
+    logger.info('APP Startup')
 
     # defining function to run on shutdown
     def atexit_close_cameras():
-        app.logger.info('ATEXIT, close cameras')
+        logger.info('ATEXIT, close cameras')
         cam_1.stop()
         cam_1.__del__()
         cam_2.stop()
@@ -122,7 +145,15 @@ if __name__ == '__main__':
     # Register the function to be called on exit
     atexit.register(atexit_close_cameras)
 
-    cam_1.binning = 2
+    cam_1.binning = 1
     cam_1.exposure_time_auto = True
-    print(app.logger.name)
-    app.run(host='0.0.0.0', threaded=True, use_reloader=True)
+
+    cam_2.binning = 1
+    cam_2.exposure_time_auto = True
+
+
+    # from werkzeug.middleware.profiler import ProfilerMiddleware
+    #
+    # app.config['PROFILE'] = True
+    # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[30])
+    app.run(host='0.0.0.0', threaded=True, use_reloader=False, debug=True)
